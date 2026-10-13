@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Interiores 3D Pro</title>
+    <!-- Tailwind CSS for modern UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js for 3D rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; user-select: none; }
+        /* Custom scrollbar for professional CAD look */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen flex flex-col overflow-hidden">
+
+    <!-- Top CAD Navigation Bar -->
+    <header class="bg-slate-900 border-b border-slate-800 h-14 flex items-center justify-between px-4 z-20 shadow-md">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 p-2 rounded-lg text-white font-bold flex items-center justify-center shadow-inner">
+                <i class="fa-solid fa-cubes text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-sm tracking-wide text-slate-200">INTERIOR CAD 3D <span class="text-xs px-1.5 py-0.5 bg-indigo-500/20 text-indigo-400 rounded border border-indigo-500/30">PRO v2.4</span></h1>
+                <p class="text-[10px] text-slate-400">Simulador y Optimizador de Espacios Arquitectónicos</p>
+            </div>
+        </div>
+
+        <!-- Quick View & Tool Action Bar -->
+        <div class="flex items-center space-x-2">
+            <div class="bg-slate-800 p-1 rounded-lg flex space-x-1 border border-slate-700/60">
+                <button onclick="setViewMode('perspectives')" id="btn-persp" class="px-3 py-1.5 text-xs font-medium rounded bg-indigo-600 text-white shadow transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-eye"></i> <span>3D Perspectiva</span>
+                </button>
+                <button onclick="setViewMode('top')" id="btn-top" class="px-3 py-1.5 text-xs font-medium rounded text-slate-300 hover:bg-slate-700 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-map"></i> <span>Planta (2D Top)</span>
+                </button>
+            </div>
+
+            <div class="h-6 w-[1px] bg-slate-700 mx-1"></div>
+
+            <button onclick="resetCamera()" class="p-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg border border-slate-700/60 transition text-xs flex items-center space-x-1" title="Centrar Cámara">
+                <i class="fa-solid fa-crosshairs"></i> <span class="hidden md:inline">Centrar</span>
+            </button>
+            <button onclick="clearRoom()" class="p-2 text-rose-400 hover:bg-rose-950/30 hover:border-rose-800 rounded-lg border border-slate-700/60 transition text-xs flex items-center space-x-1" title="Vaciar Habitación">
+                <i class="fa-solid fa-trash-can"></i> <span class="hidden md:inline">Limpiar</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Left Sidebar: Catalog & Room Config -->
+        <aside class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col z-10 select-none shadow-xl">
+            <!-- Tabs Header -->
+            <div class="flex border-b border-slate-800 bg-slate-900/50">
+                <button onclick="switchTab('catalog')" id="tab-catalog" class="flex-1 py-3 text-xs font-bold text-center border-b-2 border-indigo-500 text-indigo-400 transition">
+                    <i class="fa-solid fa-couch mr-1"></i> Catálogo 3D
+                </button>
+                <button onclick="switchTab('room')" id="tab-room" class="flex-1 py-3 text-xs font-bold text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition">
+                    <i class="fa-solid fa-house-chimney mr-1"></i> Habitación
+                </button>
+            </div>
+
+            <!-- Tab Content: Catalog -->
+            <div id="content-catalog" class="flex-1 overflow-y-auto p-4 space-y-4">
+                <div class="text-xs text-slate-400 mb-2">Haz clic en cualquier objeto para instanciarlo instantáneamente en el centro de la escena.</div>
+                
+                <div class="grid grid-cols-2 gap-2.5">
+                    <!-- Sofa Item -->
+                    <div onclick="addObject('sofa')" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/70 hover:border-indigo-500/60 rounded-xl p-3 flex flex-col items-center cursor-pointer transition group shadow-sm">
+                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 group-hover:scale-110 transition mb-2">
+                            <i class="fa-solid fa-couch text-xl"></i>
+                        </div>
+                        <span class="text-xs font-medium text-slate-200">Sofá Moderno</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">2.0m x 0.9m</span>
+                    </div>
+
+                    <!-- Armchair Item -->
+                    <div onclick="addObject('armchair')" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/70 hover:border-indigo-500/60 rounded-xl p-3 flex flex-col items-center cursor-pointer transition group shadow-sm">
+                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 group-hover:scale-110 transition mb-2">
+                            <i class="fa-solid fa-chair text-xl"></i>
+                        </div>
+                        <span class="text-xs font-medium text-slate-200">Sillón / Butaca</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">0.9m x 0.9m</span>
+                    </div>
+
+                    <!-- Dining Table -->
+                    <div onclick="addObject('table')" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/70 hover:border-indigo-500/60 rounded-xl p-3 flex flex-col items-center cursor-pointer transition group shadow-sm">
+                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 group-hover:scale-110 transition mb-2">
+                            <i class="fa-solid fa-utensils text-xl"></i>
+                        </div>
+                        <span class="text-xs font-medium text-slate-200">Mesa Comedor</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">1.6m x 0.9m</span>
+                    </div>
+
+                    <!-- Bed -->
+                    <div onclick="addObject('bed')" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/70 hover:border-indigo-500/60 rounded-xl p-3 flex flex-col items-center cursor-pointer transition group shadow-sm">
+                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 group-hover:scale-110 transition mb-2">
+                            <i class="fa-solid fa-bed text-xl"></i>
+                        </div>
+                        <span class="text-xs font-medium text-slate-200">Cama Doble</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">1.6m x 2.0m</span>
+                    </div>
+
+                    <!-- Desk -->
+                    <div onclick="addObject('desk')" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/70 hover:border-indigo-500/60 rounded-xl p-3 flex flex-col items-center cursor-pointer transition group shadow-sm">
+                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 group-hover:scale-110 transition mb-2">
+                            <i class="fa-solid fa-desktop text-xl"></i>
+                        </div>
+                        <span class="text-xs font-medium text-slate-200">Escritorio PC</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">1.4m x 0.7m</span>
+                    </div>
+
+                    <!-- Bookshelf -->
+                    <div onclick="addObject('bookshelf')" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/70 hover:border-indigo-500/60 rounded-xl p-3 flex flex-col items-center cursor-pointer transition group shadow-sm">
+                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 group-hover:scale-110 transition mb-2">
+                            <i class="fa-solid fa-book-open text-xl"></i>
+                        </div>
+                        <span class="text-xs font-medium text-slate-200">Estantería</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">1.0m x 0.4m</span>
+                    </div>
+
+                    <!-- Plant -->
+                    <div onclick="addObject('plant')" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/70 hover:border-indigo-500/60 rounded-xl p-3 flex flex-col items-center cursor-pointer transition group shadow-sm">
+                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 group-hover:scale-110 transition mb-2">
+                            <i class="fa-solid fa-seedling text-xl"></i>
+                        </div>
+                        <span class="text-xs font-medium text-slate-200">Planta Decorativa</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">0.5m x 0.5m</span>
+                    </div>
+
+                    <!-- Lamp -->
+                    <div onclick="addObject('lamp')" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700/70 hover:border-indigo-500/60 rounded-xl p-3 flex flex-col items-center cursor-pointer transition group shadow-sm">
+                        <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 group-hover:scale-110 transition mb-2">
+                            <i class="fa-solid fa-lightbulb text-xl"></i>
+                        </div>
+                        <span class="text-xs font-medium text-slate-200">Lámpara Pie</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">0.4m x 0.4m</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Room Config -->
+            <div id="content-room" class="flex-1 overflow-y-auto p-4 space-y-4 hidden">
+                <div class="text-xs text-slate-400 mb-2">Modifica las dimensiones estructurales de la habitación en metros reales.</div>
+
+                <div class="space-y-3 bg-slate-800/40 p-3.5 rounded-xl border border-slate-800">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Ancho de Habitación (X): <span id="val-width" class="text-indigo-400 font-bold">6.0</span> m</label>
+                        <input type="range" id="room-width" min="3" max="15" step="0.5" value="6" oninput="updateRoomDimensions()" class="w-full accent-indigo-500 bg-slate-700 h-1.5 rounded-lg cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Largo de Habitación (Z): <span id="val-depth" class="text-indigo-400 font-bold">5.0</span> m</label>
+                        <input type="range" id="room-depth" min="3" max="15" step="0.5" value="5" oninput="updateRoomDimensions()" class="w-full accent-indigo-500 bg-slate-700 h-1.5 rounded-lg cursor-pointer">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Altura de Paredes (Y): <span id="val-height" class="text-indigo-400 font-bold">2.8</span> m</label>
+                        <input type="range" id="room-height" min="2.2" max="5.0" step="0.2" value="2.8" oninput="updateRoomDimensions()" class="w-full accent-indigo-500 bg-slate-700 h-1.5 rounded-lg cursor-pointer">
+                    </div>
+                </div>
+
+                <div class="bg-indigo-950/20 border border-indigo-900/40 p-3 rounded-xl">
+                    <h4 class="text-xs font-semibold text-indigo-300 mb-1"><i class="fa-solid fa-circle-info mr-1"></i> Consejos de Diseño</h4>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Mantén pasillos libres de al menos 0.9m entre muebles para asegurar una óptima circulación peatonal en el ambiente.</p>
+                </div>
+            </div>
+
+            <!-- Space Utilization Stats Footer -->
+            <div class="p-4 border-t border-slate-800 bg-slate-900/80">
+                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span>Estadísticas de Espacio</span>
+                    <i class="fa-solid fa-chart-pie text-indigo-400"></i>
+                </h3>
+                <div class="space-y-2">
+                    <div>
+                        <div class="flex justify-between text-[11px] text-slate-400 mb-1">
+                            <span>Área Ocupada:</span>
+                            <span id="stat-occupied" class="font-semibold text-slate-200">0.0 m² (0%)</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+                            <div id="stat-progress" class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-400 pt-1">
+                        <span>Objetos en escena:</span>
+                        <span id="stat-count" class="font-bold text-indigo-400">0 muebles</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center: 3D Canvas Area -->
+        <main class="flex-1 relative flex flex-col bg-slate-950 overflow-hidden" id="canvas-container">
+            <!-- 3D Canvas Render Target -->
+            <canvas id="webgl-canvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+
+            <!-- Floating Viewport Hint Overlay -->
+            <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur border border-slate-700/60 text-slate-300 px-3 py-1.5 rounded-lg text-xs pointer-events-none shadow-lg flex items-center space-x-2">
+                <i class="fa-solid fa-mouse text-indigo-400"></i>
+                <span>Orbita: Clic izq + arrastrar | Zoom: Rueda | Pan: Clic der + arrastrar</span>
+            </div>
+        </main>
+
+        <!-- Right Sidebar: Selected Object Properties & Inspector -->
+        <aside id="inspector-panel" class="w-80 bg-slate-900 border-l border-slate-800 flex flex-col z-10 select-none shadow-xl transition-all duration-300">
+            <div class="p-3.5 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
+                <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-sliders text-indigo-400 mr-2"></i> Propiedades de Objeto
+                </h3>
+                <span id="inspector-status" class="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-400 rounded-full border border-slate-700">Ninguno seleccionado</span>
+            </div>
+
+            <div id="inspector-content" class="flex-1 overflow-y-auto p-4 space-y-4 opacity-50 pointer-events-none">
+                <!-- Object Name & Info -->
+                <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-800">
+                    <label class="block text-[11px] text-slate-400 mb-1">Nombre / Tipo</label>
+                    <input type="text" id="prop-name" onchange="updateSelectedObjectProp('name')" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <!-- Position Controls -->
+                <div class="bg-slate-800/50 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                    <h4 class="text-xs font-semibold text-slate-300">Posición (Metros)</h4>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">X (Ancho)</label>
+                            <input type="number" id="prop-pos-x" step="0.1" onchange="updateSelectedObjectTransform()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Y (Altura)</label>
+                            <input type="number" id="prop-pos-y" step="0.1" onchange="updateSelectedObjectTransform()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Z (Largo)</label>
+                            <input type="number" id="prop-pos-z" step="0.1" onchange="updateSelectedObjectTransform()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 text-center">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rotation Control -->
+                <div class="bg-slate-800/50 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-xs font-semibold text-slate-300">Rotación (Ángulo Y)</h4>
+                        <span id="val-rot-y" class="text-xs font-bold text-indigo-400">0°</span>
+                    </div>
+                    <input type="range" id="prop-rot-y" min="0" max="360" step="15" value="0" oninput="updateSelectedObjectTransform()" class="w-full accent-indigo-500 bg-slate-700 h-1.5 rounded-lg cursor-pointer">
+                    <div class="flex space-x-2 pt-1">
+                        <button onclick="rotateSelected(90)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs py-1.5 rounded-lg text-slate-300 transition">Rotar +90°</button>
+                        <button onclick="rotateSelected(-90)" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs py-1.5 rounded-lg text-slate-300 transition">Rotar -90°</button>
+                    </div>
+                </div>
+
+                <!-- Scaling / Dimensions -->
+                <div class="bg-slate-800/50 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                    <h4 class="text-xs font-semibold text-slate-300">Escala / Dimensiones</h4>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Escala X</label>
+                            <input type="number" id="prop-scale-x" min="0.5" max="3" step="0.1" value="1" onchange="updateSelectedObjectTransform()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Escala Y</label>
+                            <input type="number" id="prop-scale-y" min="0.5" max="3" step="0.1" value="1" onchange="updateSelectedObjectTransform()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Escala Z</label>
+                            <input type="number" id="prop-scale-z" min="0.5" max="3" step="0.1" value="1" onchange="updateSelectedObjectTransform()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200 text-center">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="pt-2">
+                    <button onclick="deleteSelectedObject()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/50 text-rose-300 py-2.5 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-trash"></i> <span>Eliminar Objeto Seleccionado</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- Application Logic Script -->
+    <script>
+        // Global Three.js variables
+        let scene, camera, renderer, controls;
+        let roomGroup, furnitureGroup;
+        let objectsInScene = [];
+        let selectedObject = null;
+        let raycaster, mouse;
+
+        // Room parameters
+        let roomConfig = {
+            width: 6.0,
+            depth: 5.0,
+            height: 2.8
+        };
+
+        // Initialize application on window load
+        window.onload = function() {
+            initThree();
+            setupEventListeners();
+            updateStats();
+            animate();
+        };
+
+        function initThree() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x030712); // Slate-950
+            scene.fog = new THREE.FogExp2(0x030712, 0.015);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(8, 6, 9);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('webgl-canvas'), antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05; // Prevent camera going below floor
+            controls.minDistance = 2;
+            controls.maxDistance = 25;
+            controls.target.set(0, 1, 0);
+
+            // Raycaster for object picking
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 15, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.bias = -0.0001;
+            scene.add(dirLight);
+
+            const pointLight = new THREE.PointLight(0x818cf8, 1, 10);
+            pointLight.position.set(0, roomConfig.height - 0.2, 0);
+            scene.add(pointLight);
+
+            // Groups
+            roomGroup = new THREE.Group();
+            furnitureGroup = new THREE.Group();
+            scene.add(roomGroup);
+            scene.add(furnitureGroup);
+
+            // Build initial room
+            rebuildRoom();
+
+            // Add sample starting furniture for immediate engagement
+            addObject('sofa', { x: 0, z: -1.2, rot: 0 });
+            addObject('table', { x: 0, z: 0.8, rot: 0 });
+        }
+
+        function rebuildRoom() {
+            // Clear existing room meshes
+            while(roomGroup.children.length > 0){ 
+                roomGroup.remove(roomGroup.children[0]); 
+            }
+
+            const { width, depth, height } = roomConfig;
+
+            // Floor
+            const floorGeo = new THREE.PlaneGeometry(width, depth);
+            const floorMat = new THREE.MeshStandardMaterial({ 
+                color: 0x1e293b, 
+                roughness: 0.8,
+                metalness: 0.2 
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            roomGroup.add(floor);
+
+            // Floor Grid Helper
+            const gridHelper = new THREE.GridHelper(Math.max(width, depth), Math.max(width, depth) * 2, 0x6366f1, 0x334155);
+            gridHelper.position.y = 0.001;
+            roomGroup.add(gridHelper);
+
+            // Walls Material (Semi-transparent modern architectural look)
+            const wallMat = new THREE.MeshStandardMaterial({ 
+                color: 0x0f172a, 
+                roughness: 0.9,
+                side: THREE.BackSide
+            });
+
+            // Back Wall
+            const backWallGeo = new THREE.PlaneGeometry(width, height);
+            const backWall = new THREE.Mesh(backWallGeo, wallMat);
+            backWall.position.set(0, height / 2, -depth / 2);
+            roomGroup.add(backWall);
+
+            // Left Wall
+            const leftWallGeo = new THREE.PlaneGeometry(depth, height);
+            const leftWall = new THREE.Mesh(leftWallGeo, wallMat);
+            leftWall.rotation.y = Math.PI / 2;
+            leftWall.position.set(-width / 2, height / 2, 0);
+            roomGroup.add(leftWall);
+
+            // Update Point Light Position
+            const pLight = scene.children.find(c => c.isPointLight);
+            if(pLight) pLight.position.set(0, height - 0.2, 0);
+        }
+
+        function createFurnitureMesh(type) {
+            const group = new THREE.Group();
+            let boundingBoxArea = 0.5; // default m² approximate
+
+            const matPrimary = new THREE.MeshStandardMaterial({ color: 0x4f46e5, roughness: 0.4 }); // Indigo
+            const matSecondary = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 }); // Dark Slate
+            const matWood = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.6 }); // Wood tone
+            const matCushion = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 }); // Grey cushion
+            const matGlass = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, transparent: true, opacity: 0.6 });
+
+            if (type === 'sofa') {
+                // Base
+                const base = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.4, 0.9), matSecondary);
+                base.position.y = 0.2;
+                base.castShadow = true;
+                base.receiveShadow = true;
+                group.add(base);
+                // Backrest
+                const back = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.7, 0.3), matCushion);
+                back.position.set(0, 0.75, -0.3);
+                back.castShadow = true;
+                group.add(back);
+                // Cushions
+                const c1 = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.25, 0.75), matPrimary);
+                c1.position.set(-0.48, 0.5, 0.05);
+                c1.castShadow = true;
+                group.add(c1);
+                const c2 = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.25, 0.75), matPrimary);
+                c2.position.set(0.48, 0.5, 0.05);
+                c2.castShadow = true;
+                group.add(c2);
+                boundingBoxArea = 1.8;
+            } 
+            else if (type === 'armchair') {
+                const base = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.9), matSecondary);
+                base.position.y = 0.2;
+                base.castShadow = true;
+                group.add(base);
+                const back = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 0.3), matCushion);
+                back.position.set(0, 0.75, -0.3);
+                back.castShadow = true;
+                group.add(back);
+                const seat = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.25, 0.7), matPrimary);
+                seat.position.set(0, 0.5, 0.05);
+                seat.castShadow = true;
+                group.add(seat);
+                boundingBoxArea = 0.81;
+            }
+            else if (type === 'table') {
+                // Top
+                const top = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.9), matWood);
+                top.position.y = 0.75;
+                top.castShadow = true;
+                top.receiveShadow = true;
+                group.add(top);
+                // 4 Legs
+                const legGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.75);
+                [-0.7, 0.7].forEach(x => {
+                    [-0.38, 0.38].forEach(z => {
+                        const leg = new THREE.Mesh(legGeo, matSecondary);
+                        leg.position.set(x, 0.375, z);
+                        leg.castShadow = true;
+                        group.add(leg);
+                    });
+                });
+                boundingBoxArea = 1.44;
+            }
+            else if (type === 'bed') {
+                // Frame
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.4, 2.05), matWood);
+                frame.position.y = 0.2;
+                frame.castShadow = true;
+                group.add(frame);
+                // Mattress
+                const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.35, 1.9), matCushion);
+                mattress.position.set(0, 0.55, 0.05);
+                mattress.castShadow = true;
+                group.add(mattress);
+                // Headboard
+                const head = new THREE.Mesh(new THREE.BoxGeometry(1.65, 1.1, 0.15), matSecondary);
+                head.position.set(0, 0.55, -0.95);
+                head.castShadow = true;
+                group.add(head);
+                boundingBoxArea = 3.3;
+            }
+            else if (type === 'desk') {
+                const top = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.7), matWood);
+                top.position.y = 0.74;
+                top.castShadow = true;
+                group.add(top);
+                // Sides/Legs
+                const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.71, 0.65), matSecondary);
+                sideL.position.set(-0.65, 0.355, 0);
+                sideL.castShadow = true;
+                group.add(sideL);
+                const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.71, 0.65), matSecondary);
+                sideR.position.set(0.65, 0.355, 0);
+                sideR.castShadow = true;
+                group.add(sideR);
+                boundingBoxArea = 0.98;
+            }
+            else if (type === 'bookshelf') {
+                const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.8, 0.4), matSecondary);
+                shelf.position.y = 0.9;
+                shelf.castShadow = true;
+                group.add(shelf);
+                boundingBoxArea = 0.4;
+            }
+            else if (type === 'plant') {
+                const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.4), matSecondary);
+                pot.position.y = 0.2;
+                pot.castShadow = true;
+                group.add(pot);
+                const leaves = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshStandardMaterial({color: 0x10b981}));
+                leaves.position.y = 0.55;
+                leaves.castShadow = true;
+                group.add(leaves);
+                boundingBoxArea = 0.25;
+            }
+            else if (type === 'lamp') {
+                const base = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.05), matSecondary);
+                base.position.y = 0.025;
+                group.add(base);
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.6), matSecondary);
+                pole.position.y = 0.8;
+                group.add(pole);
+                const shade = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.4, 16), matPrimary);
+                shade.position.y = 1.5;
+                group.add(shade);
+                boundingBoxArea = 0.2;
+            }
+
+            group.userData = { type: type, area: boundingBoxArea, name: capitalize(type) };
+            return group;
+        }
+
+        function capitalize(s) {
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        function addObject(type, customPos = null) {
+            const mesh = createFurnitureMesh(type);
+            
+            if (customPos) {
+                mesh.position.set(customPos.x, 0, customPos.z);
+                mesh.rotation.y = customPos.rot || 0;
+            } else {
+                // Offset slightly random to avoid overlap if adding multiple
+                const offset = (Math.random() - 0.5) * 1.0;
+                mesh.position.set(offset, 0, offset);
+            }
+
+            furnitureGroup.add(mesh);
+            objectsInScene.push(mesh);
+            
+            // Select newly added object
+            selectObject(mesh);
+            updateStats();
+        }
+
+        // Object Selection via Raycasting
+        function setupEventListeners() {
+            const canvas = document.getElementById('webgl-canvas');
+
+            canvas.addEventListener('pointerdown', (event) => {
+                // Only trigger selection on primary click
+                if (event.button !== 0) return;
+
+                const rect = canvas.getBoundingClientRect();
+                mouse.x = ((event.clientX - rect.left) / canvas.clientWidth) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / canvas.clientHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(furnitureGroup.children, true);
+
+                if (intersects.length > 0) {
+                    let obj = intersects[0].object;
+                    // Traverse up to the root group of the furniture item
+                    while (obj.parent && obj.parent !== furnitureGroup) {
+                        obj = obj.parent;
+                    }
+                    selectObject(obj);
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                const container = document.getElementById('canvas-container');
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function selectObject(obj) {
+            // Remove highlight from previous selection
+            if (selectedObject && selectedObject !== obj) {
+                toggleHighlight(selectedObject, false);
+            }
+
+            selectedObject = obj;
+            if (selectedObject) {
+                toggleHighlight(selectedObject, true);
+                populateInspector();
+            }
+        }
+
+        function toggleHighlight(obj, enable) {
+            obj.traverse(child => {
+                if (child.isMesh && child.material) {
+                    if (enable) {
+                        if (!child.userData.origEmissive) {
+                            child.userData.origEmissive = child.material.emissive ? child.material.emissive.getHex() : 0x000000;
+                        }
+                        child.material.emissive = new THREE.Color(0x3b82f6); // Blue highlight
+                        child.material.emissiveIntensity = 0.3;
+                    } else {
+                        if (child.userData.origEmissive !== undefined) {
+                            child.material.emissive.setHex(child.userData.origEmissive);
+                            child.material.emissiveIntensity = 0;
+                        }
+                    }
+                }
+            });
+        }
+
+        function populateInspector() {
+            if (!selectedObject) return;
+
+            const panel = document.getElementById('inspector-content');
+            const status = document.getElementById('inspector-status');
+            
+            panel.classList.remove('opacity-50', 'pointer-events-none');
+            status.textContent = "Objeto Seleccionado";
+            status.className = "text-[10px] px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded-full border border-indigo-500/40 font-semibold";
+
+            document.getElementById('prop-name').value = selectedObject.userData.name || 'Mueble';
+            document.getElementById('prop-pos-x').value = selectedObject.position.x.toFixed(2);
+            document.getElementById('prop-pos-y').value = selectedObject.position.y.toFixed(2);
+            document.getElementById('prop-pos-z').value = selectedObject.position.z.toFixed(2);
+
+            const deg = Math.round(THREE.MathUtils.radToDeg(selectedObject.rotation.y) % 360);
+            document.getElementById('prop-rot-y').value = deg >= 0 ? deg : deg + 360;
+            document.getElementById('val-rot-y').textContent = (deg >= 0 ? deg : deg + 360) + '°';
+
+            document.getElementById('prop-scale-x').value = selectedObject.scale.x.toFixed(1);
+            document.getElementById('prop-scale-y').value = selectedObject.scale.y.toFixed(1);
+            document.getElementById('prop-scale-z').value = selectedObject.scale.z.toFixed(1);
+        }
+
+        function updateSelectedObjectTransform() {
+            if (!selectedObject) return;
+
+            selectedObject.position.x = parseFloat(document.getElementById('prop-pos-x').value) || 0;
+            selectedObject.position.y = parseFloat(document.getElementById('prop-pos-y').value) || 0;
+            selectedObject.position.z = parseFloat(document.getElementById('prop-pos-z').value) || 0;
+
+            const deg = parseFloat(document.getElementById('prop-rot-y').value) || 0;
+            selectedObject.rotation.y = THREE.MathUtils.degToRad(deg);
+            document.getElementById('val-rot-y').textContent = deg + '°';
+
+            selectedObject.scale.x = parseFloat(document.getElementById('prop-scale-x').value) || 1;
+            selectedObject.scale.y = parseFloat(document.getElementById('prop-scale-y').value) || 1;
+            selectedObject.scale.z = parseFloat(document.getElementById('prop-scale-z').value) || 1;
+        }
+
+        function updateSelectedObjectProp(prop) {
+            if (!selectedObject) return;
+            if (prop === 'name') {
+                selectedObject.userData.name = document.getElementById('prop-name').value;
+            }
+        }
+
+        function rotateSelected(angleDeg) {
+            if (!selectedObject) return;
+            const currentDeg = THREE.MathUtils.radToDeg(selectedObject.rotation.y);
+            const newDeg = (currentDeg + angleDeg) % 360;
+            selectedObject.rotation.y = THREE.MathUtils.degToRad(newDeg);
+            populateInspector();
+        }
+
+        function deleteSelectedObject() {
+            if (!selectedObject) return;
+
+            furnitureGroup.remove(selectedObject);
+            objectsInScene = objectsInScene.filter(o => o !== selectedObject);
+            selectedObject = null;
+
+            // Reset inspector
+            const panel = document.getElementById('inspector-content');
+            const status = document.getElementById('inspector-status');
+            panel.classList.add('opacity-50', 'pointer-events-none');
+            status.textContent = "Ninguno seleccionado";
+            status.className = "text-[10px] px-2 py-0.5 bg-slate-800 text-slate-400 rounded-full border border-slate-700";
+
+            updateStats();
+        }
+
+        function updateRoomDimensions() {
+            roomConfig.width = parseFloat(document.getElementById('room-width').value);
+            roomConfig.depth = parseFloat(document.getElementById('room-depth').value);
+            roomConfig.height = parseFloat(document.getElementById('room-height').value);
+
+            document.getElementById('val-width').textContent = roomConfig.width.toFixed(1);
+            document.getElementById('val-depth').textContent = roomConfig.depth.toFixed(1);
+            document.getElementById('val-height').textContent = roomConfig.height.toFixed(1);
+
+            rebuildRoom();
+            updateStats();
+        }
+
+        function updateStats() {
+            const totalArea = roomConfig.width * roomConfig.depth;
+            let occupiedArea = 0;
+
+            objectsInScene.forEach(obj => {
+                const baseArea = obj.userData.area || 0.5;
+                const scaleFactor = (obj.scale.x * obj.scale.z);
+                occupiedArea += baseArea * scaleFactor;
+            });
+
+            if (occupiedArea > totalArea) occupiedArea = totalArea;
+
+            const percentage = Math.round((occupiedArea / totalArea) * 100);
+
+            document.getElementById('stat-occupied').textContent = `${occupiedArea.toFixed(1)} m² (${percentage}%)`;
+            document.getElementById('stat-progress').style.width = `${Math.min(percentage, 100)}%`;
+            document.getElementById('stat-count').textContent = `${objectsInScene.length} muebles`;
+        }
+
+        function setViewMode(mode) {
+            const btnPersp = document.getElementById('btn-persp');
+            const btnTop = document.getElementById('btn-top');
+
+            if (mode === 'perspectives') {
+                btnPersp.className = "px-3 py-1.5 text-xs font-medium rounded bg-indigo-600 text-white shadow transition flex items-center space-x-1.5";
+                btnTop.className = "px-3 py-1.5 text-xs font-medium rounded text-slate-300 hover:bg-slate-700 transition flex items-center space-x-1.5";
+                
+                camera.position.set(8, 6, 9);
+                controls.target.set(0, 1, 0);
+                controls.maxPolarAngle = Math.PI / 2 - 0.05;
+            } else {
+                btnTop.className = "px-3 py-1.5 text-xs font-medium rounded bg-indigo-600 text-white shadow transition flex items-center space-x-1.5";
+                btnPersp.className = "px-3 py-1.5 text-xs font-medium rounded text-slate-300 hover:bg-slate-700 transition flex items-center space-x-1.5";
+                
+                camera.position.set(0, 14, 0.001);
+                controls.target.set(0, 0, 0);
+                controls.maxPolarAngle = Math.PI / 2; // Allow full top down view
+            }
+            controls.update();
+        }
+
+        function resetCamera() {
+            setViewMode('perspectives');
+        }
+
+        function clearRoom() {
+            if (confirm("¿Estás seguro de vaciar toda la habitación?")) {
+                objectsInScene.forEach(obj => furnitureGroup.remove(obj));
+                objectsInScene = [];
+                selectedObject = null;
+                
+                const panel = document.getElementById('inspector-content');
+                const status = document.getElementById('inspector-status');
+                panel.classList.add('opacity-50', 'pointer-events-none');
+                status.textContent = "Ninguno seleccionado";
+                status.className = "text-[10px] px-2 py-0.5 bg-slate-800 text-slate-400 rounded-full border border-slate-700";
+
+                updateStats();
+            }
+        }
+
+        function switchTab(tab) {
+            const btnCatalog = document.getElementById('tab-catalog');
+            const btnRoom = document.getElementById('tab-room');
+            const contentCatalog = document.getElementById('content-catalog');
+            const contentRoom = document.getElementById('content-room');
+
+            if (tab === 'catalog') {
+                btnCatalog.className = "flex-1 py-3 text-xs font-bold text-center border-b-2 border-indigo-500 text-indigo-400 transition";
+                btnRoom.className = "flex-1 py-3 text-xs font-bold text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition";
+                contentCatalog.classList.remove('hidden');
+                contentRoom.classList.add('hidden');
+            } else {
+                btnRoom.className = "flex-1 py-3 text-xs font-bold text-center border-b-2 border-indigo-500 text-indigo-400 transition";
+                btnCatalog.className = "flex-1 py-3 text-xs font-bold text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition";
+                contentRoom.classList.remove('hidden');
+                contentCatalog.classList.add('hidden');
+            }
+        }
+
+        // Main Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
